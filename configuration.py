@@ -1,0 +1,11 @@
+NICKNAME        = "OmegleIRCv2"
+REALNAME        = "OmegleIRC v2!"
+IDENT           = "OmegleIRCv2"
+NICKSERV_PASS   = None
+SERVER          = "obnauticus.com"
+PORT            = 6667
+CHANNELS        = [ "#omegle" ]
+PREFIX_CMD      = "."
+PREFIX_INVIS    = ","
+MAX_CLIENTS     = 5
+OMEGLE_SERVER   = "cardassia.omegle.com"
