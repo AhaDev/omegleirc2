@@ -9,6 +9,7 @@
 import configuration
 
 import sys
+import random
 import re
 import traceback
 
@@ -124,7 +125,7 @@ class OmegleIRCBot(IRCClient):
             if len(self.context.clients) > configuration.MAX_CLIENTS:
                 break
 
-            connection = OmegleConnection(configuration.OMEGLE_SERVER)
+            connection = OmegleConnection(random.choice(configuration.OMEGLE_SERVERS))
             self.context.clients[connection.convid] = connection
 
             print "Initiated: %s" % connection.convid
