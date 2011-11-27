@@ -62,6 +62,7 @@ class OmegleContext(object):
         # flags
         self.mute = False
         self.aware = False
+        self.equi = False
 
     def msg(self, msg):
         self.parent.msg(self.channel_name, msg)
@@ -74,7 +75,8 @@ def omegle_dispatch(ircclient, client, context):
             print "Got Omegle frame for %s: %r" % (client.convid, frame)
             if frame.event == "gotMessage":
                 for line in frame.data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-                    reactor.callFromThread(ircclient.msg, context.channel_name, "%s: %s" % (client.convid.encode("utf-8"), line.encode("utf-8")))
+                    reactor.callFromThread(ircclient.msg, context.channel_name,
+                                           "%s: %s" % (client.convid.encode("utf-8"), line.encode("utf-8")))
 
                     for other_client in context.clients.values():
                         if other_client is client:
@@ -85,7 +87,8 @@ def omegle_dispatch(ircclient, client, context):
                         else:
                             other_client.send(line.encode("utf-8"))
             elif frame.event == "connected":
-                reactor.callFromThread(ircclient.msg, context.channel_name, "Connected: %s" % client.convid.encode("utf-8"))
+                reactor.callFromThread(ircclient.msg, context.channel_name,
+                                       "Connected: %s" % client.convid.encode("utf-8"))
                 print "Connected: %s" % client.convid
             elif frame.event == "typing":
                 for other_client in context.clients.values():
@@ -94,8 +97,10 @@ def omegle_dispatch(ircclient, client, context):
                     other_client.typing()
             elif frame.event in ("strangerDisconnected", "recaptchaRequired"):
                 del context.clients[client.convid]
-                reactor.callFromThread(ircclient.msg, context.channel_name, "Disconnected: %s" % client.convid.encode("utf-8"))
+                reactor.callFromThread(ircclient.msg, context.channel_name,
+                                      "Disconnected: %s" % client.convid.encode("utf-8"))
                 print "Disconnected: %s" % client.convid.encode("utf-8")
+                reactor.callFromThread(ircclient.on_omegle_disconnect, client)
                 return
 
     deferToThread(omegle_dispatch, ircclient, client, context)
@@ -119,6 +124,10 @@ class OmegleIRCBot(IRCClient):
     #
     # COMMANDS
     #
+    def on_omegle_disconnect(self, client):
+        if self.context.equi:
+            self.cmd_connect()
+
     @coerce_types(object, int)
     def cmd_connect(self, num_clients=1):
         for i in xrange(num_clients):
@@ -144,6 +153,7 @@ class OmegleIRCBot(IRCClient):
             self.context.msg("Disconnected: %s" % client.convid.encode("utf-8"))
             del self.context.clients[key]
             client.disconnect()
+            self.on_omegle_disconnect(client)
 
     def cmd_list(self):
         self.context.msg("Clients: %s" % (", ".join(client.convid.encode("utf-8") for client in self.context.clients.values()) or "none"))
@@ -162,6 +172,13 @@ class OmegleIRCBot(IRCClient):
         else:
             self.context.msg("Aware: disabled")
 
+    def cmd_equi(self):
+        self.context.equi = not self.context.equi
+        if self.context.equi:
+            self.context.msg("Equilibirum: active")
+        else:
+            self.context.msg("Equilibirum: disabled")
+
     def cmd_sayas(self, convid, *msgparts):
         msg = " ".join(msgparts)
         client = self.context.clients[convid]
@@ -176,7 +193,11 @@ class OmegleIRCBot(IRCClient):
         client.send(msg)
 
     def cmd_flags(self):
-        self.context.msg("Flags (capitalized means active): %sute, %sware" % (self.context.mute and "M" or "m", self.context.aware and "A" or "a"))
+        self.context.msg("Flags (capitalized means active): %sute, %sware, %squilibrium" % (
+            self.context.mute and "M" or "m",
+            self.context.aware and "A" or "a",
+            self.context.equi and "E" or "e"
+        ))
 
     def cmd_recaptcha(self, convid, *responseparts):
         response = " ".join(responseparts)
@@ -188,6 +209,7 @@ class OmegleIRCBot(IRCClient):
     cmd_l = cmd_list
     cmd_m = cmd_mute
     cmd_a = cmd_aware
+    cmd_e = cmd_equi
     cmd_f = cmd_flags
     cmd_r = cmd_recaptcha
 
