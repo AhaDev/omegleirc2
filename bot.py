@@ -26,32 +26,6 @@ log.startLogging(sys.stdout)
 
 CONTROL_CODES = re.compile(r"(?:\x02|\x03(?:\d{1,2}(?:,\d{1,2})?)?|\x0f|\x1f|\x1d)")
 
-class coerce_types(object):
-    def __init__(self, *args, **kwargs):
-        self.argtypes = args
-        self.kwargtypes = kwargs
-
-    def __call__(self, fn):
-        def _closure(*args, **kwargs):
-            coerced_args = list(args)
-            coerced_kwargs = kwargs.copy()
-
-            for i, arg in enumerate(args):
-                if i >= len(self.argtypes): break
-
-                if not isinstance(arg, self.argtypes[i]):
-                    coerced_args[i] = self.argtypes[i](arg)
-
-            for key, kwarg in kwargs.iteritems():
-                if key not in self.kwargtypes: continue
-
-                if not isinstance(kwarg, self.kwargtypes[key]):
-                    coerced_kwargs[key] = self.kwargtypes[key](kwarg)
-
-            fn(*coerced_args, **coerced_kwargs)
-
-        return _closure
-
 class OmegleContext(object):
     def __init__(self, parent, channel_name):
         self.parent = parent
@@ -93,11 +67,13 @@ def omegle_dispatch(ircclient, client, context):
                     if other_client is client:
                         continue
                     other_client.typing()
-            elif frame.event in ("strangerDisconnected", "recaptchaRequired"):
+            elif frame.event == "strangerDisconnected":
                 del context.clients[client.convid]
                 reactor.callFromThread(on_omegle_disconnect, ircclient, context, client)
-                if frame.event == "recaptchaRequired":
-                    reactor.callFromThread(blacklist, ircclient, context, client.host)
+                return
+            if frame.event == "recaptchaRequired":
+                del context.clients[client.convid]
+                reactor.callFromThread(blacklist, ircclient, context, client.host)
                 return
 
     deferToThread(omegle_dispatch, ircclient, client, context)
@@ -162,29 +138,27 @@ class OmegleIRCBot(IRCClient):
     #
     # COMMANDS
     #
-    @coerce_types(object, int)
-    def cmd_connect(self, num_clients=1):
-        for i in xrange(num_clients):
-            if len(self.context.clients) > configuration.MAX_CLIENTS:
-                break
+    def cmd_connect(self):
+        if len(self.context.clients) >= configuration.MAX_CLIENTS:
+            self.context.msg("No more connections permitted.")
 
-            avail_servers = set(configuration.OMEGLE_SERVERS) - self.blacklisted
+        avail_servers = set(configuration.OMEGLE_SERVERS) - self.blacklisted
 
-            # try to round robin a server
-            excluded_servers = set(client.host for client in self.context.clients.values())
-            servers = (avail_servers - excluded_servers) or avail_servers
+        # try to round robin a server
+        excluded_servers = set(client.host for client in self.context.clients.values())
+        servers = (avail_servers - excluded_servers) or avail_servers
 
-            if not servers:
-                self.context.msg("All servers currently blacklisted, try again later.")
-            server = random.choice(list(servers))
+        if not servers:
+            self.context.msg("All servers currently blacklisted, try again later.")
+        server = random.choice(list(servers))
 
-            connection = OmegleConnection(server)
-            self.context.clients[connection.convid] = connection
+        connection = OmegleConnection(server)
+        self.context.clients[connection.convid] = connection
 
-            print "Initiated: %s" % connection.convid
-            self.context.msg("\x02Initiated:\x02 %s" % connection.convid.encode("utf-8"))
+        print "Initiated: %s" % connection.convid
+        #self.context.msg("\x02Initiated:\x02 %s" % connection.convid.encode("utf-8"))
 
-            deferToThread(omegle_dispatch, self, connection, self.context)
+        deferToThread(omegle_dispatch, self, connection, self.context)
 
     def cmd_disconnect(self, convid=None):
         if convid is not None:
