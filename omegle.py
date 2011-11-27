@@ -19,13 +19,6 @@ class OmegleFrame(object):
     def __repr__(self):
         return "<OmegleFrame %r: %r>" % (self.event, self.data)
 
-    @staticmethod
-    def fromPayload(payload):
-        return OmegleFrame(
-            payload[0],
-            payload[1].strip() if len(payload) > 1 else None
-        )
-
 class OmegleConnection(object):
     def __init__(self, host="bajor.omegle.com"):
         self.host = host
@@ -85,7 +78,7 @@ class OmegleConnection(object):
             return None
 
         for payload in payloads:
-            frame = OmegleFrame.fromPayload(payload)
+            frame = OmegleFrame(*payload)
 
             if frame.event == "strangerDisconnected":
                 self.connected = False
