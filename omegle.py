@@ -40,59 +40,46 @@ class OmegleConnection(object):
         self.convid = json.loads(urllib2.urlopen(req).read())
         self.connected = False
 
-    def recaptcha(self, challenge, response):
-        req = urllib2.Request(
-            "http://%s/recaptcha" % self.host,
-            urllib.urlencode({
-                "id" : self.convid,
-                "challenge" : challenge,
-                "response" : response
-            })
-        )
+    def _request(self, endpoint, parameters):
+        try:
+            return urllib2.urlopen(urllib2.Request(
+                "http://%s/%s" % (self.host, endpoint),
+                urllib.urlencode(parameters)
+            )).read()
+        except urllib2.HTTPError as e:
+            raise OmegleException("failed to send packet")
 
-        if urllib2.urlopen(req).read() != "win":
+    def recaptcha(self, challenge, response):
+        if self._request("recaptcha", {
+            "id" : self.convid,
+            "challenge" : challenge,
+            "response" : response
+        }) != "win":
             raise OmegleException("failed to send captcha packet")
 
     def typing(self):
         if not self.connected:
             raise OmegleException("not connected to omegle")
 
-        req = urllib2.Request(
-            "http://%s/typing" % self.host,
-            urllib.urlencode({
-                "id" : self.convid
-            })
-        )
-
-        if urllib2.urlopen(req).read() != "win":
+        if self._request("typing", {
+            "id" : self.convid
+        }) != "win":
             raise OmegleException("failed to send typing packet")
 
     def send(self, msg):
         if not self.connected:
             raise OmegleException("not connected to omegle")
 
-        req = urllib2.Request(        
-            "http://%s/send" % self.host,
-            urllib.urlencode({
-                "id" : self.convid,
-                "msg" : msg
-            })
-        )
-
-        if urllib2.urlopen(req).read() != "win":
+        if self._request("send", {
+            "id" : self.convid,
+            "msg" : msg
+        }) != "win":
             raise OmegleException("failed to send message packet")
 
     def getFrames(self):
         frames = []
 
-        req = urllib2.Request(
-            "http://%s/events" % self.host,
-            urllib.urlencode({
-                "id" : self.convid
-            })
-        )
-
-        payloads = json.loads(urllib2.urlopen(req).read())
+        payloads = json.loads(self.request("events", { "id" : self.convid }))
 
         if payloads is None:
             return None
@@ -113,14 +100,9 @@ class OmegleConnection(object):
         if not self.connected:
             raise OmegleException("not connected to omegle")
 
-        req = urllib2.Request(
-            "http://%s/disconnect" % self.host,
-            urllib.urlencode({
-                "id" : self.convid
-            })
-        )
-
-        if urllib2.urlopen(req).read() != "win":
+        if self._request("disconnect", {
+            "id" : self.convid
+        }) != "win":
             raise OmegleException("failed to send disconnect(!!!) packet")
 
         self.connected = False

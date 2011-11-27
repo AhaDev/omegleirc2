@@ -83,7 +83,7 @@ def omegle_dispatch(ircclient, client, context):
                             continue
 
                         if context.aware:
-                            other_client.send("[%s@Omegle] %s" % (client.convid.encode("utf-8"), line.encode("utf-8")))
+                            other_client.send("< %s> %s" % (client.convid.encode("utf-8"), line.encode("utf-8")))
                         else:
                             other_client.send(line.encode("utf-8"))
             elif frame.event == "connected":
@@ -112,24 +112,23 @@ def on_omegle_disconnect(self, context, client):
         self.cmd_connect()
     if context.aware:
         for other_client in context.clients.values():
-            if other_client is client:
-                continue
-            other_client.send("Disconnected: %s" % client.convid)
+            other_client.send("<-- Disconnected: %s" % client.convid)
 
 def on_omegle_connect(self, context, client):
     print "Connected: %s" % client.convid
     self.msg(context.channel_name, "\x02Connected:\x02 %s" % client.convid.encode("utf-8"))
     if context.aware:
-        client.send("Welcome to Omegle Multi-User chat. We're not in any way affiliated with Omegle.")
-        client.send("You are: %s" % client.convid)
+        client.send("!!! Welcome to Omegle Multi-User chat. We're not in any way affiliated with Omegle.")
+        client.send("!!! You are: %s" % client.convid)
         if context.clients:
-            client.send("There are no other people.")
+            client.send("!!! There are no other people.")
         else:
-            client.send("There are %d other people: %s" % (len(context.clients), ", ".join(client.id for client in context.clients.values())))
+            client.send("!!! There are %d other people: %s" % (len(context.clients), ", ".join(client.convid for client in context.clients.values())))
+        client.send("!!! There may be other people on IRC.")
         for other_client in context.clients.values():
             if other_client is client:
                 continue
-            other_client.send("Connected: %s" % client.convid)
+            other_client.send("--> Connected: %s" % client.convid)
 
 def blacklist(self, context, host):
     print "Temporary blacklist (4 hours): %s" % host
@@ -172,7 +171,7 @@ class OmegleIRCBot(IRCClient):
             avail_servers = set(configuration.OMEGLE_SERVERS) - self.blacklisted
 
             # try to round robin a server
-            excluded_servers = set([ client.host for client in self.context.clients.values() ])
+            excluded_servers = set(client.host for client in self.context.clients.values())
             servers = (avail_servers - excluded_servers) or avail_servers
 
             if not servers:
@@ -192,7 +191,8 @@ class OmegleIRCBot(IRCClient):
             clientpairs = [ (convid, self.context.clients[convid]) ]
         else:
             clientpairs = self.context.clients.items()
-            if self.context.equi: self.cmd_equi()
+            if self.context.equi:
+                self.cmd_equi()
 
         for key, client in clientpairs:
             print "Disconnected: %s" % client.convid
@@ -298,7 +298,7 @@ class OmegleIRCBot(IRCClient):
         if channel.lower() not in self.contexts.keys():
             return
 
-        msg = CONTROL_CODES.sub("", msg)
+        msg = CONTROL_CODES.sub("", msg).encode("utf-8")
 
         if msg.lower().startswith(configuration.PREFIX_CMD):
             argv = msg[len(configuration.PREFIX_CMD):].split(" ")
@@ -316,7 +316,7 @@ class OmegleIRCBot(IRCClient):
                     msg = "*%s*" % msg[8:-1]
 
                 if self.context.aware:
-                    msg = "[%s@IRC] %s" % (nick, msg)
+                    msg = "<+%s> %s" % (nick, msg)
 
                 print "Sending: %s" % msg
 
@@ -324,8 +324,8 @@ class OmegleIRCBot(IRCClient):
                     try:
                         client.send(msg)
                     except OmegleException, e:
-                        self.context.msg("Omegle Library Exception: %s" % e)
-                        traceback.print_exc()
+                        del self.context.clients[client.convid]
+                        on_omegle_disconnect(self, self.context, client)
 
     def action(self, user, channel, data):
         self.privmsg(user, channel, "\x01ACTION %s\x01" % data)
