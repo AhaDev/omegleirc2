@@ -159,6 +159,7 @@ class OmegleIRCBot(IRCClient):
     def cmd_disconnect(self, convid=None):
         if convid is not None:
             clientpairs = [ (convid, self.context.clients[convid]) ]
+            if self.context.equi: self.cmd_equi()
         else:
             clientpairs = self.context.clients.items()
 
@@ -167,7 +168,6 @@ class OmegleIRCBot(IRCClient):
             self.context.msg("Disconnected: %s" % client.convid.encode("utf-8"))
             del self.context.clients[key]
             client.disconnect()
-            self.on_omegle_disconnect(client)
 
     def cmd_list(self):
         self.context.msg("Clients: %s" % (", ".join(client.convid.encode("utf-8") for client in self.context.clients.values()) or "none"))
