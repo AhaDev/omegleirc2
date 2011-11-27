@@ -79,7 +79,7 @@ class OmegleConnection(object):
     def getFrames(self):
         frames = []
 
-        payloads = json.loads(self.request("events", { "id" : self.convid }))
+        payloads = json.loads(self._request("events", { "id" : self.convid }))
 
         if payloads is None:
             return None
