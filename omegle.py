@@ -7,6 +7,7 @@
 import json
 import urllib
 import urllib2
+import logging
 
 class OmegleException(Exception):
     pass
@@ -22,19 +23,15 @@ class OmegleFrame(object):
 class OmegleConnection(object):
     def __init__(self, host="bajor.omegle.com"):
         self.host = host
-        req = urllib2.Request(
-            "http://%s/start" % host,
-            urllib.urlencode({
-                "rcs" : 1,
-                "spid" : ""
-            })
-        )
-
-        self.convid = json.loads(urllib2.urlopen(req).read())
+        self.convid = json.loads(self._request("start", {
+            "rcs" : 1,
+            "spid" : ""
+        }))
         self.connected = False
 
     def _request(self, endpoint, parameters):
         try:
+            logging.info("Sending to /%s: %s" % (endpoint, parameters))
             return urllib2.urlopen(urllib2.Request(
                 "http://%s/%s" % (self.host, endpoint),
                 urllib.urlencode(parameters)

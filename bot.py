@@ -298,7 +298,7 @@ class OmegleIRCBot(IRCClient):
         if channel.lower() not in self.contexts.keys():
             return
 
-        msg = CONTROL_CODES.sub("", msg).encode("utf-8")
+        msg = CONTROL_CODES.sub("", msg.encode("utf-8"))
 
         if msg.lower().startswith(configuration.PREFIX_CMD):
             argv = msg[len(configuration.PREFIX_CMD):].split(" ")
