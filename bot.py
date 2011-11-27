@@ -324,8 +324,9 @@ class OmegleIRCBot(IRCClient):
                     try:
                         client.send(msg)
                     except OmegleException, e:
-                        del self.context.clients[client.convid]
-                        on_omegle_disconnect(self, self.context, client)
+                        if client.convid in self.context.clients:
+                            del self.context.clients[client.convid]
+                            on_omegle_disconnect(self, self.context, client)
 
     def action(self, user, channel, data):
         self.privmsg(user, channel, "\x01ACTION %s\x01" % data)
