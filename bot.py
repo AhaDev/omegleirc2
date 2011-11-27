@@ -112,7 +112,7 @@ def on_omegle_disconnect(self, context, client):
         for other_client in context.clients.values():
             other_client.send("Disconnected: %s" % client.convid)
 
-def on_omegle_connect(self, client):
+def on_omegle_connect(self, context, client):
     print "Connected: %s" % client.convid
     self.msg(context.channel_name, "Connected: %s" % client.convid.encode("utf-8"))
     if context.aware:
