@@ -96,6 +96,8 @@ def omegle_dispatch(ircclient, client, context):
             elif frame.event in ("strangerDisconnected", "recaptchaRequired"):
                 del context.clients[client.convid]
                 reactor.callFromThread(on_omegle_disconnect, ircclient, context, client)
+                if frame.event == "recaptchaRequired":
+                    reactor.callFromThread(blacklist, ircclient, context, client.host)
                 return
 
     deferToThread(omegle_dispatch, ircclient, client, context)
@@ -123,6 +125,15 @@ def on_omegle_connect(self, context, client):
                 continue
             other_client.send("Connected: %s" % client.convid)
 
+def blacklist(self, context, host):
+    context.msg("Temporary blacklist (4 hours): %s" % host)
+    self.blacklisted.add(host)
+    reactor.callLater(4 * 60 * 60, unblacklist, self, context, host)
+
+def unblacklist(self, context, host):
+    context.msg("Unblacklisted: %s" % host)
+    self.blacklisted.remove(host)
+
 class OmegleIRCBot(IRCClient):
     @property
     def context(self):
@@ -139,6 +150,8 @@ class OmegleIRCBot(IRCClient):
         self.username = configuration.IDENT
         self.realname = configuration.REALNAME
 
+        self.blacklisted = set()
+
     #
     # COMMANDS
     #
@@ -150,7 +163,12 @@ class OmegleIRCBot(IRCClient):
 
             # try to round robin a server
             excluded_servers = set([ client.host for client in self.context.clients.values() ])
-            servers = list(set(configuration.OMEGLE_SERVERS) - excluded_servers) or configuration.OMEGLE_SERVERS
+            servers = set(configuration.OMEGLE_SERVERS) - excluded_servers or configuration.OMEGLE_SERVERS
+
+            servers -= self.blacklisted
+
+            if not servers:
+                self.context.msg("All servers currently blacklisted, try again later.")
 
             connection = OmegleConnection(random.choice(servers))
             self.context.clients[connection.convid] = connection
