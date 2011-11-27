@@ -148,7 +148,11 @@ class OmegleIRCBot(IRCClient):
             if len(self.context.clients) > configuration.MAX_CLIENTS:
                 break
 
-            connection = OmegleConnection(random.choice(configuration.OMEGLE_SERVERS))
+            # try to round robin a server
+            excluded_servers = set([ client.host for client in self.context.clients.values() ])
+            servers = list(set(configuration.OMEGLE_SERVERS) - excluded_servers) or configuration.OMEGLE_SERVERS
+
+            connection = OmegleConnection(random.choice(servers))
             self.context.clients[connection.convid] = connection
 
             print "Initiated: %s" % connection.convid
