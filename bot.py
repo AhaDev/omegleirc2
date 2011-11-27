@@ -76,7 +76,7 @@ def omegle_dispatch(ircclient, client, context):
             if frame.event == "gotMessage":
                 for line in frame.data.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
                     reactor.callFromThread(ircclient.msg, context.channel_name,
-                                           "%s: %s" % (client.convid.encode("utf-8"), line.encode("utf-8")))
+                                           "\x02%s:\x02 %s" % (client.convid.encode("utf-8"), line.encode("utf-8")))
 
                     for other_client in context.clients.values():
                         if other_client is client:
@@ -106,8 +106,8 @@ def omegle_dispatch(ircclient, client, context):
 # EVENTS
 #
 def on_omegle_disconnect(self, context, client):
-    self.msg(context.channel_name, "Disconnected: %s" % client.convid.encode("utf-8"))
     print "Disconnected: %s" % client.convid.encode("utf-8")
+    self.msg(context.channel_name, "\x02Disconnected:\x02 %s" % client.convid.encode("utf-8"))
     if context.equi:
         self.cmd_connect()
     if context.aware:
@@ -118,7 +118,7 @@ def on_omegle_disconnect(self, context, client):
 
 def on_omegle_connect(self, context, client):
     print "Connected: %s" % client.convid
-    self.msg(context.channel_name, "Connected: %s" % client.convid.encode("utf-8"))
+    self.msg(context.channel_name, "\x02Connected:\x02 %s" % client.convid.encode("utf-8"))
     if context.aware:
         for other_client in context.clients.values():
             if other_client is client:
@@ -126,14 +126,14 @@ def on_omegle_connect(self, context, client):
             other_client.send("Connected: %s" % client.convid)
 
 def blacklist(self, context, host):
-    context.msg("Temporary blacklist (4 hours): %s" % host)
     print "Temporary blacklist (4 hours): %s" % host
+    context.msg("\x02Temporary blacklist (4 hours):\x02 %s" % host)
     self.blacklisted.add(host)
     reactor.callLater(4 * 60 * 60, unblacklist, self, context, host)
 
 def unblacklist(self, context, host):
-    context.msg("Unblacklisted: %s" % host)
     print "Unblacklisted: %s" % host
+    context.msg("\x02Unblacklisted:\x02 %s" % host)
     self.blacklisted.remove(host)
 
 class OmegleIRCBot(IRCClient):
@@ -176,7 +176,7 @@ class OmegleIRCBot(IRCClient):
             self.context.clients[connection.convid] = connection
 
             print "Initiated: %s" % connection.convid
-            self.context.msg("Initiated: %s" % connection.convid.encode("utf-8"))
+            self.context.msg("\x02Initiated:\x02 %s" % connection.convid.encode("utf-8"))
 
             deferToThread(omegle_dispatch, self, connection, self.context)
 
@@ -189,7 +189,7 @@ class OmegleIRCBot(IRCClient):
 
         for key, client in clientpairs:
             print "Disconnected: %s" % client.convid
-            self.context.msg("Disconnected: %s" % client.convid.encode("utf-8"))
+            self.context.msg("\x02Disconnected:\x02 %s" % client.convid.encode("utf-8"))
             del self.context.clients[key]
             client.disconnect()
 
@@ -199,23 +199,23 @@ class OmegleIRCBot(IRCClient):
     def cmd_mute(self):
         self.context.mute = not self.context.mute
         if self.context.mute:
-            self.context.msg("Mute: active")
+            self.context.msg("\x02Mute:\x02 active")
         else:
-            self.context.msg("Mute: disabled")
+            self.context.msg("\x02Mute:\x02 disabled")
 
     def cmd_aware(self):
         self.context.aware = not self.context.aware
         if self.context.aware:
-            self.context.msg("Aware: active")
+            self.context.msg("\x02Aware:\x02 active")
         else:
-            self.context.msg("Aware: disabled")
+            self.context.msg("\x02Aware:\x02 disabled")
 
     def cmd_equi(self):
         self.context.equi = not self.context.equi
         if self.context.equi:
-            self.context.msg("Equilibirum: active")
+            self.context.msg("\x02Equilibirum:\x02 active")
         else:
-            self.context.msg("Equilibirum: disabled")
+            self.context.msg("\x02Equilibirum:\x02 disabled")
 
     def cmd_sayas(self, convid, *msgparts):
         msg = " ".join(msgparts)
@@ -223,7 +223,7 @@ class OmegleIRCBot(IRCClient):
         for other_client in self.context.clients.values():
             if other_client is client: continue
             other_client.send(msg)
-        self.context.msg("%s (sayas): %s" % (convid, msg))
+        self.context.msg("\x02%s (sayas):\x02 %s" % (convid, msg))
 
     def cmd_sayto(self, convid, *msgparts):
         msg = " ".join(msgparts)
@@ -231,7 +231,7 @@ class OmegleIRCBot(IRCClient):
         client.send(msg)
 
     def cmd_flags(self):
-        self.context.msg("Flags (capitalized means active): %sute, %sware, %squilibrium" % (
+        self.context.msg("\x02Flags (capitalized means active):\x02 %sute, %sware, %squilibrium" % (
             self.context.mute and "M" or "m",
             self.context.aware and "A" or "a",
             self.context.equi and "E" or "e"
