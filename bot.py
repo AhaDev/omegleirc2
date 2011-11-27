@@ -163,16 +163,17 @@ class OmegleIRCBot(IRCClient):
             if len(self.context.clients) > configuration.MAX_CLIENTS:
                 break
 
+            avail_servers = set(configuration.OMEGLE_SERVERS) - self.blacklisted
+
             # try to round robin a server
             excluded_servers = set([ client.host for client in self.context.clients.values() ])
-            servers = set(configuration.OMEGLE_SERVERS) - excluded_servers or configuration.OMEGLE_SERVERS
-
-            servers -= self.blacklisted
+            servers = (avail_servers - excluded_servers) or avail_servers
 
             if not servers:
                 self.context.msg("All servers currently blacklisted, try again later.")
+            server = random.choice(list(servers))
 
-            connection = OmegleConnection(random.choice(list(servers)))
+            connection = OmegleConnection(server)
             self.context.clients[connection.convid] = connection
 
             print "Initiated: %s" % connection.convid
@@ -194,7 +195,7 @@ class OmegleIRCBot(IRCClient):
             client.disconnect()
 
     def cmd_list(self):
-        self.context.msg("Clients: %s" % (", ".join(client.convid.encode("utf-8") for client in self.context.clients.values()) or "none"))
+        self.context.msg("\x02Clients:\x02 %s" % (", ".join(client.convid.encode("utf-8") for client in self.context.clients.values()) or "none"))
 
     def cmd_mute(self):
         self.context.mute = not self.context.mute
