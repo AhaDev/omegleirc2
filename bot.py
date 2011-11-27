@@ -110,6 +110,8 @@ def on_omegle_disconnect(self, context, client):
         self.cmd_connect()
     if context.aware:
         for other_client in context.clients.values():
+            if other_client is client:
+                continue
             other_client.send("Disconnected: %s" % client.convid)
 
 def on_omegle_connect(self, context, client):
