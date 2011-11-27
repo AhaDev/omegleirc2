@@ -120,6 +120,12 @@ def on_omegle_connect(self, context, client):
     print "Connected: %s" % client.convid
     self.msg(context.channel_name, "\x02Connected:\x02 %s" % client.convid.encode("utf-8"))
     if context.aware:
+        client.send("Welcome to Omegle Multi-User chat. We're not in any way affiliated with Omegle.")
+        client.send("You are: %s" % client.convid)
+        if context.clients:
+            client.send("There are no other people.")
+        else:
+            client.send("There are %d other people: %s" % (len(context.clients), ", ".join(client.id for client in context.clients.values())))
         for other_client in context.clients.values():
             if other_client is client:
                 continue
