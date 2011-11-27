@@ -172,7 +172,7 @@ class OmegleIRCBot(IRCClient):
             if not servers:
                 self.context.msg("All servers currently blacklisted, try again later.")
 
-            connection = OmegleConnection(random.select(list(servers)))
+            connection = OmegleConnection(random.choice(list(servers)))
             self.context.clients[connection.convid] = connection
 
             print "Initiated: %s" % connection.convid
