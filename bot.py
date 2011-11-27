@@ -127,11 +127,13 @@ def on_omegle_connect(self, context, client):
 
 def blacklist(self, context, host):
     context.msg("Temporary blacklist (4 hours): %s" % host)
+    print "Temporary blacklist (4 hours): %s" % host
     self.blacklisted.add(host)
     reactor.callLater(4 * 60 * 60, unblacklist, self, context, host)
 
 def unblacklist(self, context, host):
     context.msg("Unblacklisted: %s" % host)
+    print "Unblacklisted: %s" % host
     self.blacklisted.remove(host)
 
 class OmegleIRCBot(IRCClient):
