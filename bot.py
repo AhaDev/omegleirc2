@@ -87,9 +87,7 @@ def omegle_dispatch(ircclient, client, context):
                         else:
                             other_client.send(line.encode("utf-8"))
             elif frame.event == "connected":
-                reactor.callFromThread(ircclient.msg, context.channel_name,
-                                       "Connected: %s" % client.convid.encode("utf-8"))
-                print "Connected: %s" % client.convid
+                reactor.callFromThread(ircclient.on_omegle_connect, context, client)
             elif frame.event == "typing":
                 for other_client in context.clients.values():
                     if other_client is client:
@@ -97,10 +95,7 @@ def omegle_dispatch(ircclient, client, context):
                     other_client.typing()
             elif frame.event in ("strangerDisconnected", "recaptchaRequired"):
                 del context.clients[client.convid]
-                reactor.callFromThread(ircclient.msg, context.channel_name,
-                                      "Disconnected: %s" % client.convid.encode("utf-8"))
-                print "Disconnected: %s" % client.convid.encode("utf-8")
-                reactor.callFromThread(ircclient.on_omegle_disconnect, client)
+                reactor.callFromThread(ircclient.on_omegle_disconnect, context, client)
                 return
 
     deferToThread(omegle_dispatch, ircclient, client, context)
@@ -122,12 +117,29 @@ class OmegleIRCBot(IRCClient):
         self.realname = configuration.REALNAME
 
     #
+    # EVENTS
+    #
+    def on_omegle_disconnect(self, context, client):
+        self.msg(context.channel_name, "Disconnected: %s" % client.convid.encode("utf-8"))
+        print "Disconnected: %s" % client.convid.encode("utf-8")
+        if context.equi:
+            self.cmd_connect()
+        if context.aware:
+            for other_client in self.context.clients.values():
+                other_client.send("Disconnected: %s" % client.convid)
+
+    def on_omegle_connect(self, client):
+        print "Connected: %s" % client.convid
+        self.msg(context.channel_name, "Connected: %s" % client.convid.encode("utf-8"))
+        if self.context.aware:
+            for other_client in context.clients.values():
+                if other_client is client:
+                    continue
+                other_client.send("Connected: %s" % client.convid)
+
+    #
     # COMMANDS
     #
-    def on_omegle_disconnect(self, client):
-        if self.context.equi:
-            self.cmd_connect()
-
     @coerce_types(object, int)
     def cmd_connect(self, num_clients=1):
         for i in xrange(num_clients):
