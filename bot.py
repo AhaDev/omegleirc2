@@ -5,6 +5,7 @@
 # the terms of the Do What The Fuck You Want To Public License, Version 2, as
 # published by Sam Hocevar. See http://sam.zoy.org/wtfpl/COPYING for more
 # details.
+#Edited by Aha2Y.
 
 import configuration
 
@@ -91,8 +92,8 @@ def on_omegle_disconnect(self, context, client):
             other_client.send("<-- Disconnected: %s" % client.convid)
 
 def on_omegle_connect(self, context, client):
-    print "Connected: %s" % client.convid
-    self.msg(context.channel_name, "\x02Connected:\x02 %s" % client.convid.encode("utf-8"))
+    print "[%s] Connected!" % client.convid
+    self.msg(context.channel_name, "3[9%s3]3 Connected!" % client.convid.encode("utf-8"))
     if context.aware:
         client.send("-!- Welcome to Omegle Multi-User chat. We're not in any way affiliated with Omegle.")
         client.send("-!- You are: %s" % client.convid)
@@ -104,7 +105,7 @@ def on_omegle_connect(self, context, client):
         for other_client in context.clients.values():
             if other_client is client:
                 continue
-            other_client.send("--> Connected: %s" % client.convid)
+            other_client.send("[%s] Connected!" % client.convid)
 
 def blacklist(self, context, host):
     print "Temporary blacklist (4 hours): %s" % host
